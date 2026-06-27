@@ -172,7 +172,57 @@
     #loading{display:flex;align-items:center;justify-content:center;height:100vh;color:var(--gold);font-size:1.4rem;gap:.75rem}
     #loading span{display:inline-block;animation:spin 1s linear infinite}
 
-    @media(max-width:600px){#search{width:130px}#nav-center{display:none}#ko-grid,#groups-grid{grid-template-columns:1fr}}
+    /* ── Mobile ────────────────────────────────────────────────────────── */
+    @media(max-width:660px){
+      /* Header : logo + search sur ligne 1, nav sur ligne 2 */
+      #header-inner{height:auto;min-height:56px;flex-wrap:wrap;padding:.5rem 1rem;gap:.35rem}
+      #logo-ball{width:32px;height:32px;font-size:.95rem}
+      #logo-name{font-size:.88rem}
+      #logo-sub{display:none}
+      #header-right{flex:1;justify-content:flex-end}
+      #search{width:130px;font-size:.8rem}
+      /* Nav VISIBLE sur mobile — pleine largeur en 2e ligne */
+      #nav-center{display:flex;order:10;width:100%;gap:.4rem}
+      .nav-btn{flex:1;text-align:center;font-size:.78rem;padding:.35rem .4rem}
+      /* Filterbar : compense la hauteur du header à 2 lignes */
+      #filterbar{top:92px}
+      /* Grilles */
+      #groups-grid,#ko-grid{grid-template-columns:1fr}
+      #grid{grid-template-columns:1fr}
+      /* Standings table : compact */
+      .standings-table td{padding:.3rem .35rem;font-size:.73rem}
+      .standings-table .team-cell{font-size:.75rem;gap:.2rem}
+      .group-card-head{padding:.6rem .75rem}
+      .group-title{font-size:.88rem}
+      .group-matches{padding:.4rem .5rem}
+      .group-match-row{font-size:.71rem;padding:.25rem 0}
+      .gm-date{display:none}
+      /* Knockout cards */
+      .ko-card{padding:.9rem}
+      .ko-flag{font-size:1.9rem}
+      .ko-score{font-size:1.5rem}
+      .ko-team-name{font-size:.7rem}
+      .ko-date-row{flex-wrap:wrap;gap:.3rem}
+      .ko-venue{font-size:.7rem}
+      /* Phase tabs */
+      .phase-tab{padding:.35rem .75rem;font-size:.78rem}
+      /* Programme */
+      #programme{padding:1.25rem .75rem 3rem}
+      .prog-header h2{font-size:1.25rem}
+      .prog-header p{font-size:.78rem}
+      /* Article detail */
+      #detail{padding:1.25rem .75rem 3rem}
+      .detail-hero{height:170px}
+      .detail-title{font-size:1.4rem}
+      /* Hero */
+      #hero{padding:2rem .75rem}
+      #hero p{font-size:.9rem}
+      /* Filter bar */
+      #filterbar-inner{height:48px;padding:0 .75rem}
+      .filter-btn{padding:.3rem .7rem;font-size:.78rem}
+      /* Main padding */
+      #main{padding:1.25rem .75rem}
+    }
   </style>
 </head>
 <body>
