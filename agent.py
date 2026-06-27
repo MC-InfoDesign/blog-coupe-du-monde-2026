@@ -15,6 +15,7 @@ Modes :
 import os
 import sys
 import json
+import random
 import argparse
 import requests
 from datetime import datetime, timedelta, timezone
@@ -30,6 +31,13 @@ ARTICLES_PATH = os.path.join(os.path.dirname(__file__), "articles.json")
 CATEGORIES    = ["Résultats", "Équipes", "Transferts", "Analyse tactique"]
 YESTERDAY     = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
 TODAY         =  datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+AUTHORS = [
+    "Thomas Leblanc", "Sarah Dupont", "Marc Fontaine",
+    "Julie Bernard", "Pierre Martin", "Camille Rousseau",
+    "Nicolas Petit", "Laura Simon", "Antoine Morel",
+    "Sophie Girard", "Julien Lambert", "Emma Leroy",
+]
 
 FALLBACK_TOPICS = [
     {"title": "Résultats J-1 : toutes les rencontres de la journée",          "hint": "Résultats"},
@@ -193,7 +201,7 @@ Article factuel, ancré dans le Mondial 2026, style journalistique de qualité, 
         "title":         gen["title"],
         "category":      category,
         "date":          date,
-        "author":        "Rédaction CdM 2026",
+        "author":        random.choice(AUTHORS),
         "summary":       gen["summary"],
         "content":       gen["content"],
         "tags":          gen.get("tags", ["CdM2026", "Football"]),
