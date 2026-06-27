@@ -3,4 +3,4 @@ Allow: /
 Disallow: /graphify-out/
 Disallow: /.claude/
 
-Sitemap: https://blog-cdm2026.vercel.app/sitemap.xml
+Sitemap: https://blog-coupe-du-monde-2026.vercel.app/
