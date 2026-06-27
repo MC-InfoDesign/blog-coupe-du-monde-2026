@@ -351,7 +351,7 @@ function renderHeader(page) {
 }
 
 // ── Hero ─────────────────────────────────────────────────────────────────
-function renderHero(){const s=mk('section',{id:'hero'});s.innerHTML=`<div id="hero-glow"></div><div style="position:relative"><div id="hero-pill">🏟️ USA · Canada · Mexique · Juin–Juillet 2026</div><h1>Toute l'actu de la<br>Coupe du Monde 2026</h1><p>Résultats en direct, analyses tactiques, transferts et portraits d'équipes — mis à jour chaque jour par IA.</p></div>`;return s;}
+function renderHero(){const s=mk('section',{id:'hero'});s.innerHTML=`<div id="hero-glow"></div><div style="position:relative"><div id="hero-pill">🏟️ USA · Canada · Mexique · Juin–Juillet 2026</div><h1>Toute l'actu de la<br>Coupe du Monde 2026</h1><p>Résultats en direct, analyses tactiques, transferts et portraits d'équipes — mis à jour chaque jour.</p></div>`;return s;}
 
 // ── FilterBar ────────────────────────────────────────────────────────────
 function renderFilterBar(){
@@ -392,7 +392,7 @@ function renderGrid(){
   if(selectedCat!=='Tout')list=list.filter(a=>a.category===selectedCat);
   if(search.trim()){const q=search.toLowerCase();list=list.filter(a=>a.title.toLowerCase().includes(q)||a.summary.toLowerCase().includes(q)||(a.tags||[]).some(t=>t.toLowerCase().includes(q)));}
   const main=document.getElementById('main');if(!main)return;main.innerHTML='';
-  if(!list.length){main.innerHTML=`<div id="empty"><div id="empty-icon">⚽</div><h2>${search?`Aucun résultat pour "${search}"`:'Aucun article ici'}</h2><p>Essayez une autre catégorie ou lancez l'agent.</p></div>`;return;}
+  if(!list.length){main.innerHTML=`<div id="empty"><div id="empty-icon">⚽</div><h2>${search?`Aucun résultat pour "${search}"`:'Aucun article ici'}</h2><p>Essayez une autre catégorie ou revenez plus tard.</p></div>`;return;}
   const grid=div('');grid.id='grid';list.forEach(a=>grid.append(renderCard(a)));main.append(grid);
 }
 
@@ -541,7 +541,7 @@ function renderProgramme(schedule) {
 function openArticle(a){window.location.hash=`#/article/${a.id}`;}
 
 // ── Footer ───────────────────────────────────────────────────────────────
-function renderFooter(){const f=document.createElement('footer');f.innerHTML=`<div><div class="footer-logo">⚽ Blog CdM 2026</div><div class="footer-note">Alimenté par <strong style="color:var(--gold)">Claude AI</strong> · <code>python agent.py --refresh</code> pour mettre à jour</div></div>`;return f;}
+function renderFooter(){const f=document.createElement('footer');f.innerHTML=`<div><div class="footer-logo">⚽ Blog CdM 2026</div><div class="footer-note">© 2026 Blog CdM 2026 · Tous droits réservés</div></div>`;return f;}
 
 // ── Render App ────────────────────────────────────────────────────────────
 async function renderApp(){
