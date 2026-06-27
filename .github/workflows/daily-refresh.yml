@@ -2,8 +2,11 @@ name: 🤖 Refresh quotidien CdM 2026
 
 on:
   schedule:
-    - cron: '0 7 * * *'   # Tous les jours à 9h heure de Paris (7h UTC)
+    - cron: '0 7 * * *'   # Tous les jours à 9h Paris (7h UTC)
   workflow_dispatch:        # Bouton "Run workflow" manuel sur GitHub
+
+permissions:
+  contents: write           # Nécessaire pour pousser les articles mis à jour
 
 jobs:
   refresh:
@@ -12,6 +15,8 @@ jobs:
     steps:
       - name: 📥 Récupérer le repo
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 🐍 Installer Python
         uses: actions/setup-python@v5
@@ -19,7 +24,7 @@ jobs:
           python-version: '3.11'
 
       - name: 📦 Installer les dépendances
-        run: pip install anthropic requests python-dotenv
+        run: pip install requests groq anthropic python-dotenv
 
       - name: ⚽ Rafraîchir les articles (J-1)
         env:
@@ -36,5 +41,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add articles.json sitemap.xml
-          git diff --staged --quiet && echo "Rien à committer" || git commit -m "🤖 Refresh du $(date +'%d/%m/%Y')"
+          git diff --staged --quiet && echo "Rien a committer" || git commit -m "🤖 Refresh du $(date +'%d/%m/%Y')"
           git push
