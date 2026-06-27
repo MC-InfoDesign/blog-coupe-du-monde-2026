@@ -7,6 +7,10 @@ echo   Blog CdM 2026 - Refresh quotidien
 echo  ===========================================
 echo.
 
+:: 0. Installer les dependances si besoin
+echo [0/4] Verification des dependances Python...
+python -m pip install requests groq anthropic python-dotenv -q
+
 :: 1. Rafraichir les articles
 echo [1/4] Generation des articles J-1...
 python agent.py --refresh --count 12
