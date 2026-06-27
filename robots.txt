@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /graphify-out/
+Disallow: /.claude/
+
+Sitemap: https://blog-cdm2026.vercel.app/sitemap.xml

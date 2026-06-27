@@ -1,0 +1,20 @@
+# Clés API — ne JAMAIS committer
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Graphify (généré localement, pas utile sur le repo)
+graphify-out/
+
+# Système
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Claude
+.claude/
