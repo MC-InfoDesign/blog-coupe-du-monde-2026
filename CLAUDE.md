@@ -10,140 +10,198 @@ Rules:
 - Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
 - After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
 
-## Architecture
+---
 
-**Stack :** HTML · CSS · JavaScript ES Modules (zéro bundler, zéro framework) · Python 3
+## Contexte projet
 
-### Fichiers principaux
+**Site en ligne :** https://blog-coupe-du-monde-2026.vercel.app
+**GitHub :** https://github.com/MC-InfoDesign/blog-coupe-du-monde-2026
+**Dossier local :** `C:\Users\Mimix\blog-coupe-du-monde\`
 
-```
-index.html        — Blog complet : routing hash, rendu DOM vanilla JS
-articles.json     — Source de données des articles (id, title, category, date, author, summary, content, tags)
-agent.py          — Agent CLI : NewsAPI → Claude API → articles.json
-refresh.bat       — Lance --refresh + ouvre le blog (Windows, double-clic)
-refresh.sh        — Lance --refresh + ouvre le blog (Linux/Mac/WSL)
-.env.example      — Template ANTHROPIC_API_KEY + NEWS_API_KEY
-```
+Blog sur la Coupe du Monde 2026 (USA/Canada/Mexique). Contenu généré automatiquement chaque matin à 9h via GitHub Actions + Groq API.
 
-### Flux de données
+---
+
+## Stack & fichiers
 
 ```
-NewsAPI (optionnel)
-    │
-    ▼
-agent.py ──► categorize() via Claude ──► generate_article() via Claude
-    │
-    ▼
-articles.json  ◄──── déduplication (SequenceMatcher > 0.62)
-    │
-    ▼
-index.html fetch('./articles.json') ──► rendu DOM
+index.html          — SPA vanilla JS ES Modules, zéro framework, zéro bundler
+articles.json       — Source de vérité des articles (remplacé chaque jour par agent.py)
+schedule.json       — Groupes A-L FIFA réels, classements, résultats, huitièmes
+agent.py            — Génère les articles via Groq (gratuit) ou Anthropic
+daily.bat           — One-click Windows : refresh + git push
+sitemap.py          — Génère sitemap.xml (base-url en argument)
+vercel.json         — Headers cache uniquement (pas de builds)
+.github/workflows/daily-refresh.yml — GitHub Actions : refresh auto à 9h Paris
+.env                — GROQ_API_KEY=gsk_... (ne jamais committer)
 ```
 
-### Structure de index.html
+**Fichiers jamais modifiés par GitHub Actions :** index.html, schedule.json, vercel.json, agent.py
+**Fichiers modifiés par GitHub Actions chaque jour :** articles.json, sitemap.xml
 
-Le fichier est un Single-Page App entièrement en JS vanilla avec ES modules (`<script type="module">`).
+---
 
-**State global :**
-- `allArticles` — tableau de tous les articles chargés
-- `search` — chaîne de recherche en cours
-- `selectedCat` — catégorie active (défaut : `'Tout'`)
-- `page` — `'home'` | `'article'`
+## Règles ABSOLUES
 
-**Fonctions de rendu (toutes retournent un `HTMLElement`) :**
-- `renderHeader()` — barre sticky avec logo + input recherche + badge LIVE
-- `renderHero()` — bandeau d'intro (masqué quand recherche active)
-- `renderFilterBar()` — 5 boutons catégorie avec compteurs
-- `renderCard(article)` — carte cliquable avec thumbnail, badge catégorie, résumé
-- `renderDetail(article)` — page article complète avec partage
-- `renderGrid()` — applique les filtres et peuple `#main`
-- `renderApp()` — recompose toute la page selon le hash courant
+### 1. Jamais de mention IA visible
+Le blog doit paraître humain. Aucune référence à Claude, IA, agent, automatique côté utilisateur.
+- Auteurs des articles = noms humains tirés au sort : Thomas Leblanc, Sarah Dupont, Marc Fontaine, Julie Bernard, Pierre Martin, Camille Rousseau, Nicolas Petit, Laura Simon, Antoine Morel, Sophie Girard, Julien Lambert, Emma Leroy
+- Footer = `© 2026 Blog CdM 2026 · Tous droits réservés`
+- Hero = "mis à jour chaque jour" (sans "par IA")
 
-**Routing :** hash-based
-- `#/` → home, toutes catégories
-- `#/category/<nom>` → home filtrée
+### 2. Toujours fetcher les vraies données sportives
+Ne JAMAIS inventer groupes, résultats, classements. Fetcher ces sources AVANT toute modif de schedule.json :
+
+| Source | URL | Contenu |
+|---|---|---|
+| Classements A-L | `https://www.nbcsports.com/soccer/news/2026-world-cup-group-stage-table-full-standings-for-all-12-groups` | pts, GD, statut par équipe |
+| Résultats matchs | `https://www.espn.com/soccer/story/_/id/48939282/2026-fifa-world-cup-fixtures-results-match-schedule-group-stage-knockout-rounds-bracket` | scores par date |
+| Huitièmes confirmés | `https://www.si.com/soccer/every-confirmed-round-of-32-match-2026-world-cup` | R32 avec stades |
+| Groupes officiels | `https://www.livescore.com/en/football/international/world-cup-2026/standings/` | composition A-L |
+
+### 3. Vrais groupes FIFA 2026 (ne pas réinventer)
+- A : Mexique, Afrique du Sud, Corée du Sud, Tchéquie
+- B : Suisse, Canada, Bosnie-Herzégovine, Qatar
+- C : Brésil, Maroc, Écosse, Haïti
+- D : USA, Australie, Paraguay, Turquie
+- E : Allemagne, Côte d'Ivoire, Équateur, Curaçao
+- F : Pays-Bas, Japon, Suède, Tunisie
+- G : Belgique, Égypte, Iran, Nouvelle-Zélande
+- H : Espagne, Cap-Vert, Uruguay, Arabie Saoudite
+- I : France, Norvège, Sénégal, Irak
+- J : Argentine, Autriche, Algérie, Jordanie
+- K : Colombie, Portugal, RD Congo, Ouzbékistan
+- L : Angleterre, Ghana, Croatie, Panama
+
+---
+
+## Architecture index.html
+
+SPA complète en JS vanilla (`<script type="module">`). Pas de React, pas de Vue.
+
+### Routing hash-based
+- `#/` → home (articles grid)
+- `#/category/<nom>` → filtre catégorie
 - `#/article/<id>` → page détail
+- `#/programme` → grille groupes + huitièmes
 
-### Catégories
+### State global
+```js
+allArticles   // tous les articles chargés depuis articles.json
+allSchedule   // données schedule.json (lazy-loaded à la 1ère visite Programme)
+search        // chaîne de recherche
+selectedCat   // catégorie active ('Tout' par défaut)
+selectedPhase // phase programme active ('Groupes' par défaut)
+```
 
+### Fonctions clés
+```js
+makeThumb(article)        // visuel inline par catégorie (scoreboard, drapeau, etc.)
+parseMatchTitle(title)    // extrait équipes + score depuis le titre
+FLAGS                     // map 48 équipes → emoji drapeau
+renderHeader(page)        // sticky header avec nav Articles/Programme
+renderCard(article)       // carte avec visuel généré
+renderProgramme(schedule) // groupes A-L avec classements + matchs
+renderDetail(article)     // page article complète
+renderApp()               // recompose toute la page selon le hash
+```
+
+### Visuels des cartes (makeThumb)
+- **Résultats** : scoreboard avec drapeaux + score (parsé depuis le titre)
+- **Équipes** : grand drapeau centré + nom équipe
+- **Transferts** : `flag → 💸 MERCATO` + titre
+- **Analyse tactique** : terrain SVG en filigrane + dots formation
+
+### Catégories & couleurs
 | Catégorie | Icône | Couleur |
 |---|---|---|
-| Résultats | ⚽ | `#16a34a` (vert) |
-| Équipes | 🏆 | `#3b82f6` (bleu) |
-| Transferts | 💸 | `#f59e0b` (or) |
-| Analyse tactique | 📊 | `#a855f7` (violet) |
+| Résultats | ⚽ | `#16a34a` |
+| Équipes | 🏆 | `#3b82f6` |
+| Transferts | 💸 | `#f59e0b` |
+| Analyse tactique | 📊 | `#a855f7` |
 
-### Format articles.json
+### Mobile (breakpoint 660px)
+- Header à 2 lignes : logo+search ligne 1, nav Articles/Programme ligne 2
+- `#filterbar` sticky à `top: 92px` (compense header 2 lignes)
+- Grilles en 1 colonne
+- Tableaux standings compacts (pos, flag+équipe, buts, pts)
 
-```json
-{
-  "articles": [
-    {
-      "id": 1,
-      "title": "...",
-      "category": "Résultats",
-      "date": "2026-06-25",
-      "author": "...",
-      "summary": "2-3 phrases résumé",
-      "content": "Texte avec ## Sections\n\nParagraphes séparés par double newline",
-      "tags": ["tag1", "tag2"]
-    }
-  ]
-}
+---
+
+## Agent (agent.py)
+
+### Provider auto-détecté
+1. `GROQ_API_KEY` → Groq Llama 3.3 70B (gratuit, prioritaire)
+2. `ANTHROPIC_API_KEY` → Claude Sonnet (payant, fallback)
+
+### Commandes
+```bash
+python agent.py --refresh          # remplace tout articles.json (12 articles J-1)
+python agent.py --refresh --count 8
+python agent.py --add --count 3    # ajoute sans remplacer
+python agent.py --list
+python agent.py --dry-run --refresh
 ```
 
-Le champ `content` utilise `## Titre` pour les sections et `\n\n` entre paragraphes — parsé par `renderDetail()`.
+### Logique --refresh
+1. Fetch NewsAPI `from=J-1` (ou sujets de secours si pas de NEWS_API_KEY)
+2. `categorize()` → `generate_article()` via LLM
+3. Auteur = nom humain aléatoire (random.choice(AUTHORS))
+4. Remplace entièrement articles.json
 
-## Lancer le projet
+---
 
-```bash
-# Serveur local (obligatoire — fetch() ne fonctionne pas en file://)
+## Déploiement
+
+### Vercel (production)
+```powershell
+cd C:\Users\Mimix\blog-coupe-du-monde
+vercel --prod   # déploie les fichiers locaux directement, ~6 secondes
+```
+**Attention :** Vercel est configuré sur branche `master` (pas `main`).
+Si `git push` ne déclenche pas Vercel, toujours utiliser `vercel --prod`.
+
+### Git workflow
+```powershell
+git add <fichiers>
+git commit -m "message"
+git push
+```
+
+Si conflit (GitHub Actions a pushé entre temps) :
+```powershell
+git fetch origin
+git checkout origin/master -- articles.json   # prendre leur version
+# ré-appliquer les changements locaux si besoin
+git add -A && git commit -m "message" && git push --force
+```
+
+### GitHub Actions (daily-refresh.yml)
+- Tourne chaque jour à **9h heure de Paris** (7h UTC)
+- Secrets requis dans GitHub Settings → Secrets : `GROQ_API_KEY`
+- Optionnel : `NEWS_API_KEY`, `ANTHROPIC_API_KEY`
+- Permissions : `contents: write` + `token: GITHUB_TOKEN` dans checkout
+- Modifie uniquement : `articles.json`, `sitemap.xml`
+
+---
+
+## SEO & Analytics
+
+- **Google Search Console** : fichier de vérif `googlea193c6b3babdcb7b.html` à la racine
+- **Sitemap** : `python sitemap.py --base-url https://blog-coupe-du-monde-2026.vercel.app`
+- **Vercel Analytics** : `/_vercel/insights/script.js` (dans `<head>` index.html)
+- **Vercel Speed Insights** : `/_vercel/speed-insights/script.js` (dans `<head>` index.html)
+- Meta og:, twitter:, JSON-LD NewsArticle mis à jour dynamiquement à chaque navigation
+
+---
+
+## Lancer en local
+
+```powershell
+cd C:\Users\Mimix\blog-coupe-du-monde
 python -m http.server 8000
 # → http://localhost:8000
 
-# Setup clés API
-cp .env.example .env       # renseigner ANTHROPIC_API_KEY (+ optionnel NEWS_API_KEY)
-pip install anthropic requests python-dotenv
+# Dépendances Python
+pip install requests groq anthropic python-dotenv
 ```
-
-## Agent — commandes principales
-
-```bash
-# ★ Rafraîchir TOUT le blog avec les actus J-1 (12 articles, remplace les anciens)
-python agent.py --refresh
-
-# Raccourcis one-click
-.\refresh.bat              # Windows — refresh + ouvre http://localhost:8000
-bash refresh.sh            # Linux/Mac/WSL
-
-# Variantes
-python agent.py --refresh --count 8   # 8 articles au lieu de 12
-python agent.py --add --count 3       # ajoute 3 articles sans remplacer
-python agent.py --dry-run --refresh   # prévisualise sans écrire
-python agent.py --list                # liste les articles existants
-```
-
-### Logique du mode --refresh
-
-1. Filtre NewsAPI sur `from=J-1&to=today` (ou sujets de secours si pas de clé)
-2. Pour chaque sujet : `categorize()` → `generate_article()` via Claude
-3. **Remplace** entièrement `articles.json` (IDs réinitialisés à 1)
-4. Tous les articles sont datés de J-1
-
-## Commandes graphify
-
-```bash
-graphify init .                         # initialiser le graphe (première fois)
-graphify update .                       # mise à jour après modification
-graphify query "routing hash"           # chercher un concept dans la codebase
-graphify explain "renderApp"            # expliquer une fonction
-graphify path "agent.py" "articles.json" # relation entre deux fichiers
-```
-
-## Points d'attention
-
-- `articles.json` est la **seule source de vérité** — l'agent l'écrit, le blog le lit.
-- Les IDs articles sont séquentiels et uniques ; l'agent prend `max(id) + 1`.
-- La déduplication dans `agent.py` utilise `SequenceMatcher` avec un seuil de 0.62 — ajuster `threshold` si trop/pas assez strict.
-- Le blog utilise `picsum.photos/seed/cdm<id>` pour des thumbnails déterministes par article.
-- Pas de build step, pas de node_modules — tout est vanilla.
