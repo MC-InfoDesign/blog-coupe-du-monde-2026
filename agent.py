@@ -288,6 +288,77 @@ def is_duplicate(title, existing, threshold=0.62):
 
 # ── Génération d'article ──────────────────────────────────────────────────────
 
+def get_tournament_context():
+    """Résume l'état du tournoi depuis schedule.json pour le LLM."""
+    try:
+        with open(SCHEDULE_PATH, "r", encoding="utf-8") as f:
+            s = json.load(f)
+    except Exception:
+        return ""
+
+    # Équipes qualifiées par groupe
+    qualified = []
+    for grp, teams in s.get("standings", {}).items():
+        for t in teams:
+            if t.get("q"):
+                qualified.append(t["team"])
+
+    # Prochains matchs à venir
+    upcoming = []
+    for m in s.get("matches", []):
+        if m.get("status") in ("à venir", "TBD") and m.get("home") != "TBD":
+            home = m["home"].split(" ", 1)[-1]
+            away = m["away"].split(" ", 1)[-1]
+            upcoming.append(f"{m['date']} — {home} vs {away} ({m.get('phase','?')})")
+        if len(upcoming) >= 8:
+            break
+
+    # Derniers résultats
+    recent = []
+    for m in reversed(s.get("matches", [])):
+        if m.get("status") == "terminé" and m.get("homeScore") is not None:
+            home = m["home"].split(" ", 1)[-1]
+            away = m["away"].split(" ", 1)[-1]
+            recent.append(f"{home} {m['homeScore']}-{m['awayScore']} {away}")
+        if len(recent) >= 6:
+            break
+
+    ctx = f"Équipes qualifiées : {', '.join(qualified)}.\n"
+    if recent:
+        ctx += f"Derniers résultats : {' | '.join(recent)}.\n"
+    if upcoming:
+        ctx += f"Prochains matchs : {' | '.join(upcoming)}.\n"
+    return ctx
+
+
+def generate_pertinent_topics(provider, count):
+    """Demande au LLM de suggérer des sujets d'articles pertinents sur le tournoi en cours."""
+    context = get_tournament_context()
+    prompt = f"""Tu es rédacteur en chef d'un blog sur la Coupe du Monde 2026 (USA/Canada/Mexique, juin-juillet 2026).
+
+Voici l'état actuel du tournoi :
+{context}
+
+Propose exactement {count} sujets d'articles PERTINENTS et VARIÉS pour aujourd'hui.
+Chaque sujet doit être ancré dans ce qui se passe réellement : équipes qualifiées, chocs à venir, révélations, tactiques observées, histoires humaines des joueurs, enjeux des prochains matchs.
+Évite les sujets trop génériques. Mêle : analyse tactique, portrait d'équipe, focus joueur, preview match à venir, bilan de groupe.
+
+Réponds avec du JSON valide uniquement, un tableau de {count} objets :
+[
+  {{"title": "Titre accrocheur en français", "hint": "Résultats|Équipes|Transferts|Analyse tactique"}},
+  ...
+]"""
+    try:
+        raw = llm_chat(provider, [{"role": "user", "content": prompt}], max_tokens=800)
+        if raw.startswith("```"):
+            raw = raw.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+        topics = json.loads(raw)
+        return [{"title": t["title"], "hint": t.get("hint", "Équipes")} for t in topics if "title" in t]
+    except Exception as e:
+        print(f"  Erreur génération sujets pertinents : {e}")
+        return []
+
+
 def categorize(provider, title, desc):
     prompt = (
         f"Catégorise cet article dans l'une de ces catégories exactement : "
@@ -378,13 +449,20 @@ def run_refresh(provider, news_key, count, dry_run):
             if not news_topics:
                 raise ValueError("aucun resultat")
         except Exception as e:
-            print(f"  NewsAPI erreur ({e}) — sujets de secours")
-            news_topics = FALLBACK_TOPICS
+            print(f"  NewsAPI erreur ({e}) — sujets pertinents LLM")
+            news_topics = []
     else:
-        print("Pas de NEWS_API_KEY — sujets de secours utilises")
-        news_topics = FALLBACK_TOPICS
+        print("Pas de NEWS_API_KEY — sujets pertinents LLM")
+        news_topics = []
 
-    # Matchs d'abord, puis actualités, puis fallback
+    # Sujets pertinents générés par le LLM selon l'état du tournoi
+    remaining = count - len(match_topics)
+    if remaining > 0 and not news_topics:
+        print(f"  Génération de {remaining} sujets pertinents via LLM...")
+        news_topics = generate_pertinent_topics(provider, remaining)
+        print(f"  {len(news_topics)} sujets pertinents générés")
+
+    # Matchs d'abord, puis sujets pertinents, puis fallback si besoin
     topics = match_topics + news_topics
     if len(topics) < count:
         topics += FALLBACK_TOPICS
