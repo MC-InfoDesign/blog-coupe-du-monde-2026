@@ -209,26 +209,21 @@ def llm_chat(provider, messages, max_tokens=2500, _retry=0):
 
     if provider == "groq":
         api_key = os.getenv("GROQ_API_KEY")
-        try:
-            resp = requests.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-                json={
-                    "model": "llama-3.3-70b-versatile",
-                    "messages": messages,
-                    "max_tokens": max_tokens,
-                    "temperature": 0.7,
-                },
-                timeout=60,
-            )
-            if resp.status_code == 429 and _retry < 4:
-                wait = 15 * (2 ** _retry)  # 15s, 30s, 60s, 120s
-                print(f"  Rate limit Groq — attente {wait}s...")
-                time.sleep(wait)
-                return llm_chat(provider, messages, max_tokens, _retry + 1)
-            resp.raise_for_status()
-        except requests.exceptions.HTTPError:
-            raise
+        resp = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            json={
+                "model": "llama-3.3-70b-versatile",
+                "messages": messages,
+                "max_tokens": max_tokens,
+                "temperature": 0.7,
+            },
+            timeout=60,
+        )
+        if resp.status_code == 429 and _retry < 2:
+            time.sleep(8)
+            return llm_chat(provider, messages, max_tokens, _retry + 1)
+        resp.raise_for_status()
         return resp.json()["choices"][0]["message"]["content"].strip()
 
     else:  # anthropic
