@@ -18,6 +18,7 @@ import json
 import random
 import argparse
 import requests
+import time
 from datetime import datetime, timedelta, timezone
 from difflib import SequenceMatcher
 
@@ -203,23 +204,31 @@ def get_provider():
 
 # ── Client LLM unifié ─────────────────────────────────────────────────────────
 
-def llm_chat(provider, messages, max_tokens=2500):
+def llm_chat(provider, messages, max_tokens=2500, _retry=0):
     """Appelle Groq ou Anthropic et retourne le texte de la réponse."""
 
     if provider == "groq":
         api_key = os.getenv("GROQ_API_KEY")
-        resp = requests.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-            json={
-                "model": "llama-3.3-70b-versatile",
-                "messages": messages,
-                "max_tokens": max_tokens,
-                "temperature": 0.7,
-            },
-            timeout=60,
-        )
-        resp.raise_for_status()
+        try:
+            resp = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                json={
+                    "model": "llama-3.3-70b-versatile",
+                    "messages": messages,
+                    "max_tokens": max_tokens,
+                    "temperature": 0.7,
+                },
+                timeout=60,
+            )
+            if resp.status_code == 429 and _retry < 4:
+                wait = 15 * (2 ** _retry)  # 15s, 30s, 60s, 120s
+                print(f"  Rate limit Groq — attente {wait}s...")
+                time.sleep(wait)
+                return llm_chat(provider, messages, max_tokens, _retry + 1)
+            resp.raise_for_status()
+        except requests.exceptions.HTTPError:
+            raise
         return resp.json()["choices"][0]["message"]["content"].strip()
 
     else:  # anthropic
@@ -479,6 +488,7 @@ def run_refresh(provider, news_key, count, dry_run):
             article = generate_article(provider, item, len(new_articles)+1, cat, YESTERDAY)
             print(f"  OK : {article['title'][:65]}")
             new_articles.append(article)
+            time.sleep(3)  # pause pour éviter le rate limit Groq
         except json.JSONDecodeError as e:
             print(f"  JSON invalide, sujet ignore : {e}")
         except Exception as e:
