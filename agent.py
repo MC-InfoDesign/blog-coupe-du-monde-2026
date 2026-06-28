@@ -40,11 +40,9 @@ AUTHORS = [
 ]
 
 FALLBACK_TOPICS = [
-    {"title": "Résultats J-1 : toutes les rencontres de la journée",          "hint": "Résultats"},
     {"title": "Analyse : les tactiques qui ont fait la différence hier",       "hint": "Analyse tactique"},
     {"title": "L'équipe surprise du jour : qui a impressionné ?",              "hint": "Équipes"},
     {"title": "Mercato : les rumeurs de transfert nées des performances J-1",  "hint": "Transferts"},
-    {"title": "Buteurs du jour et statistiques clés de la journée",            "hint": "Résultats"},
     {"title": "Portrait : le joueur révélation de la journée",                 "hint": "Équipes"},
     {"title": "Décryptage tactique : le meilleur système observé hier",        "hint": "Analyse tactique"},
     {"title": "Blessures et absences : l'infirmerie après la journée",         "hint": "Équipes"},
@@ -53,6 +51,39 @@ FALLBACK_TOPICS = [
     {"title": "5-4-1 ou 4-3-3 : quel bloc défensif a mieux résisté hier ?",   "hint": "Analyse tactique"},
     {"title": "Classement des groupes mis à jour après la journée d'hier",    "hint": "Résultats"},
 ]
+
+SCHEDULE_PATH = os.path.join(os.path.dirname(__file__), "schedule.json")
+
+def get_match_topics(date):
+    """Retourne un topic par match terminé à la date donnée, avec score réel."""
+    try:
+        with open(SCHEDULE_PATH, "r", encoding="utf-8") as f:
+            schedule = json.load(f)
+    except Exception:
+        return []
+
+    topics = []
+    for m in schedule.get("matches", []):
+        if m.get("date") != date or m.get("status") != "terminé":
+            continue
+        home = m["home"].split(" ", 1)[-1]   # retire l'emoji
+        away = m["away"].split(" ", 1)[-1]
+        hs   = m.get("homeScore", "?")
+        as_  = m.get("awayScore", "?")
+        note = m.get("note", "")
+        phase = m.get("phase", "Groupes")
+        venue = m.get("venue", "")
+        topics.append({
+            "title": f"{home} {hs}-{as_} {away} : les moments forts",
+            "hint": "Résultats",
+            "match_context": (
+                f"Match : {home} vs {away}, score final {hs}-{as_}. "
+                f"Phase : {phase}. Stade : {venue}. "
+                f"{('Note : ' + note) if note else ''} "
+                f"Date : {date}."
+            ),
+        })
+    return topics
 
 
 # ── Détection du provider ─────────────────────────────────────────────────────
@@ -168,8 +199,18 @@ def categorize(provider, title, desc):
 
 
 def generate_article(provider, item, article_id, category, date):
-    title_hint = item.get("title", item.get("hint", "Actualité CdM 2026"))
-    desc_hint  = item.get("description", item.get("hint", ""))
+    title_hint    = item.get("title", item.get("hint", "Actualité CdM 2026"))
+    desc_hint     = item.get("description", item.get("hint", ""))
+    match_context = item.get("match_context", "")
+
+    if match_context:
+        extra = f"""
+Contexte du match (UTILISE CES DONNÉES RÉELLES) :
+{match_context}
+
+L'article doit couvrir : le score final, les moments décisifs, les buteurs ou actions clés, l'ambiance et les conséquences pour la suite du tournoi. Invente des détails plausibles (buteurs, minutes, situations de jeu) cohérents avec le score réel."""
+    else:
+        extra = ""
 
     prompt = f"""Tu es journaliste sportif pour un blog sur la Coupe du Monde 2026 (USA / Canada / Mexique, juin-juillet 2026).
 La journée dont tu parles est le {date}.
@@ -179,10 +220,11 @@ Génère un article complet en français. Réponds avec du JSON valide uniquemen
 Sujet : {title_hint}
 Description : {desc_hint}
 Catégorie : {category}
+{extra}
 
 JSON attendu (ces clés exactement) :
 {{
-  "title":         "Titre accrocheur, max 90 caractères",
+  "title":         "Titre accrocheur avec le score si c'est un résultat de match, max 90 caractères",
   "summary":       "Résumé de 2 à 3 phrases percutantes",
   "content":       "## Section 1\\n\\nParagraphe...\\n\\n## Section 2\\n\\nContenu... (min 5 paragraphes, 650 mots)",
   "tags":          ["tag1","tag2","tag3","tag4"],
@@ -223,20 +265,27 @@ def run_refresh(provider, news_key, count, dry_run):
     print(f"Provider : {'Groq (Llama 3.3 70B)' if provider=='groq' else 'Anthropic Claude'}")
     print("─" * 50)
 
+    # Topics matchs du jour en priorité absolue
+    match_topics = get_match_topics(YESTERDAY)
+    if match_topics:
+        print(f"  {len(match_topics)} match(s) trouvé(s) dans schedule.json pour le {YESTERDAY}")
+
     if news_key:
         print("Recuperation NewsAPI...")
         try:
-            topics = fetch_news(news_key, count=count + 8)
-            print(f"  {len(topics)} articles trouves")
-            if not topics:
+            news_topics = fetch_news(news_key, count=count + 8)
+            print(f"  {len(news_topics)} articles trouves")
+            if not news_topics:
                 raise ValueError("aucun resultat")
         except Exception as e:
             print(f"  NewsAPI erreur ({e}) — sujets de secours")
-            topics = FALLBACK_TOPICS
+            news_topics = FALLBACK_TOPICS
     else:
         print("Pas de NEWS_API_KEY — sujets de secours utilises")
-        topics = FALLBACK_TOPICS
+        news_topics = FALLBACK_TOPICS
 
+    # Matchs d'abord, puis actualités, puis fallback
+    topics = match_topics + news_topics
     if len(topics) < count:
         topics += FALLBACK_TOPICS
     topics = topics[:count + 4]
