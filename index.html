@@ -47,7 +47,7 @@
     #search-wrap{position:relative}#search-icon{position:absolute;left:.7rem;top:50%;transform:translateY(-50%);pointer-events:none;font-size:.85rem}
     #search{background:#1c2333;border:1px solid var(--b2);border-radius:8px;padding:.45rem .7rem .45rem 2.1rem;color:var(--text);font-size:.85rem;width:185px;transition:border-color .15s}
     #search:focus{border-color:var(--gold)}#search::placeholder{color:var(--dim)}
-    #live-badge{background:var(--green);color:#fff;border-radius:20px;padding:.25rem .7rem;font-size:.68rem;font-weight:700;letter-spacing:.05em;display:flex;align-items:center;gap:.35rem;flex-shrink:0;border:none;animation:pulse 2s infinite}
+    #live-badge{background:var(--green);color:#fff;border-radius:20px;padding:.25rem .7rem;font-size:.68rem;font-weight:700;letter-spacing:.05em;display:none;align-items:center;gap:.35rem;flex-shrink:0;border:none;animation:pulse 2s infinite}
     #live-dot{width:6px;height:6px;border-radius:50%;background:#fff;animation:blink 1.5s infinite;display:inline-block}
 
     /* ── Hero ── */
@@ -625,10 +625,28 @@ async function renderApp(){
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────
-window.addEventListener('hashchange',renderApp);
+// ── Live badge : visible uniquement si un match est en cours (heure ET) ──────
+async function checkLiveBadge(){
+  try{
+    const s=await fetch('./schedule.json').then(r=>r.json());
+    const nowET=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
+    const todayStr=nowET.toISOString().slice(0,10);
+    const isLive=s.matches.some(m=>{
+      if(m.date!==todayStr||m.status==='terminé'||m.status==='TBD')return false;
+      const [h,min]=m.time.split(':').map(Number);
+      const kick=new Date(nowET);kick.setHours(h,min,0,0);
+      const end=new Date(kick.getTime()+110*60000);
+      return nowET>=kick&&nowET<=end;
+    });
+    const badge=document.getElementById('live-badge');
+    if(badge)badge.style.display=isLive?'flex':'none';
+  }catch(e){}
+}
+
+window.addEventListener('hashchange',()=>renderApp().then(checkLiveBadge));
 fetch('./articles.json')
   .then(r=>{if(!r.ok)throw new Error();return r.json();})
-  .then(d=>{allArticles=d.articles||d;const r=getHash();if(r.cat)selectedCat=r.cat;renderApp();})
+  .then(d=>{allArticles=d.articles||d;const r=getHash();if(r.cat)selectedCat=r.cat;renderApp().then(checkLiveBadge);})
   .catch(()=>{document.getElementById('app').innerHTML=`<div id="header"><div id="header-inner" style="max-width:1200px;margin:0 auto;padding:0 1.25rem;height:60px;display:flex;align-items:center"><span style="font-size:1.5rem">⚽</span>&nbsp;<strong>CdM 2026</strong></div></div><div style="max-width:700px;margin:3rem auto;padding:0 1.25rem"><div class="error-box">⚠️ Lancez un serveur local :<br><code style="display:block;margin-top:.5rem;padding:.75rem;background:#111;border-radius:6px">python -m http.server 8000</code>Puis ouvrez <strong>http://localhost:8000</strong></div></div>`;});
 </script>
 </body>
