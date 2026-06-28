@@ -32,6 +32,7 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           NEWS_API_KEY: ${{ secrets.NEWS_API_KEY }}
         run: python agent.py --refresh --count 12
+        # Note : --refresh intègre automatiquement --update-schedule avant la génération
 
       - name: 🗺️ Mettre à jour le sitemap
         run: python sitemap.py --base-url https://blog-coupe-du-monde-2026.vercel.app

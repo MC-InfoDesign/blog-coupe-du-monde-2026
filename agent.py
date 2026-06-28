@@ -54,6 +54,106 @@ FALLBACK_TOPICS = [
 
 SCHEDULE_PATH = os.path.join(os.path.dirname(__file__), "schedule.json")
 
+# Mapping noms ESPN (anglais) → noms schedule.json (français)
+TEAM_NAME_MAP = {
+    "Mexico": "Mexique", "South Africa": "Afrique du Sud", "South Korea": "Corée du Sud",
+    "Czech Republic": "Tchéquie", "Czechia": "Tchéquie",
+    "Switzerland": "Suisse", "Canada": "Canada", "Bosnia and Herzegovina": "Bosnie-Herzégovine",
+    "Qatar": "Qatar", "Brazil": "Brésil", "Morocco": "Maroc", "Scotland": "Écosse",
+    "Haiti": "Haïti", "USA": "USA", "United States": "USA", "Australia": "Australie",
+    "Paraguay": "Paraguay", "Turkey": "Turquie", "Germany": "Allemagne",
+    "Ivory Coast": "Côte d'Ivoire", "Ecuador": "Équateur", "Curacao": "Curaçao",
+    "Netherlands": "Pays-Bas", "Japan": "Japon", "Sweden": "Suède", "Tunisia": "Tunisie",
+    "Belgium": "Belgique", "Egypt": "Égypte", "Iran": "Iran", "New Zealand": "Nouvelle-Zélande",
+    "Spain": "Espagne", "Cape Verde": "Cap-Vert", "Uruguay": "Uruguay",
+    "Saudi Arabia": "Arabie Saoudite", "France": "France", "Norway": "Norvège",
+    "Senegal": "Sénégal", "Iraq": "Irak", "Argentina": "Argentine", "Austria": "Autriche",
+    "Algeria": "Algérie", "Jordan": "Jordanie", "Colombia": "Colombie", "Portugal": "Portugal",
+    "DR Congo": "RD Congo", "Congo DR": "RD Congo", "Uzbekistan": "Ouzbékistan", "England": "Angleterre",
+    "Ghana": "Ghana", "Croatia": "Croatie", "Panama": "Panama",
+}
+
+def normalize_team(name):
+    """Convertit un nom d'équipe ESPN en nom français du schedule."""
+    return TEAM_NAME_MAP.get(name, name)
+
+def fetch_espn_scores(date):
+    """Fetch les scores du jour depuis l'API JSON ESPN (gratuite, sans clé)."""
+    date_str = date.replace("-", "")  # 20260627
+    url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates={date_str}"
+    r = requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
+    r.raise_for_status()
+    data = r.json()
+    results = []
+    for event in data.get("events", []):
+        comp = event.get("competitions", [{}])[0]
+        status = comp.get("status", {}).get("type", {}).get("name", "")
+        if status not in ("STATUS_FINAL", "STATUS_FULL_TIME"):
+            continue
+        competitors = comp.get("competitors", [])
+        if len(competitors) < 2:
+            continue
+        home = next((c for c in competitors if c.get("homeAway") == "home"), competitors[0])
+        away = next((c for c in competitors if c.get("homeAway") == "away"), competitors[1])
+        results.append({
+            "home": normalize_team(home.get("team", {}).get("displayName", "")),
+            "away": normalize_team(away.get("team", {}).get("displayName", "")),
+            "homeScore": int(home.get("score", 0)),
+            "awayScore": int(away.get("score", 0)),
+        })
+    return results
+
+def update_schedule(date):
+    """Met à jour schedule.json avec les vrais scores ESPN pour la date donnée."""
+    print(f"\nMise à jour schedule.json pour le {date}...")
+    try:
+        scores = fetch_espn_scores(date)
+    except Exception as e:
+        print(f"  Erreur ESPN : {e}")
+        return
+
+    if not scores:
+        print("  Aucun match terminé trouvé sur ESPN pour cette date.")
+        return
+
+    try:
+        with open(SCHEDULE_PATH, "r", encoding="utf-8") as f:
+            schedule = json.load(f)
+    except Exception as e:
+        print(f"  Impossible de lire schedule.json : {e}")
+        return
+
+    updated = 0
+    for match in schedule.get("matches", []):
+        if match.get("date") != date:
+            continue
+        home_fr = match["home"].split(" ", 1)[-1]
+        away_fr = match["away"].split(" ", 1)[-1]
+        for score in scores:
+            if score["home"] == home_fr and score["away"] == away_fr:
+                match["homeScore"] = score["homeScore"]
+                match["awayScore"] = score["awayScore"]
+                match["status"]    = "terminé"
+                updated += 1
+                print(f"  ✓ {home_fr} {score['homeScore']}-{score['awayScore']} {away_fr}")
+                break
+            # ESPN retourne parfois home/away inversés
+            elif score["home"] == away_fr and score["away"] == home_fr:
+                match["homeScore"] = score["awayScore"]
+                match["awayScore"] = score["homeScore"]
+                match["status"]    = "terminé"
+                updated += 1
+                print(f"  ✓ {home_fr} {score['awayScore']}-{score['homeScore']} {away_fr}")
+                break
+
+    if updated:
+        schedule["lastUpdated"] = date
+        with open(SCHEDULE_PATH, "w", encoding="utf-8") as f:
+            json.dump(schedule, f, ensure_ascii=False, indent=2)
+        print(f"  {updated} match(s) mis à jour dans schedule.json")
+    else:
+        print("  Aucun match correspondant trouvé (vérifier les noms d'équipes).")
+
 def get_match_topics(date):
     """Retourne un topic par match terminé à la date donnée, avec score réel."""
     try:
@@ -361,24 +461,31 @@ def run_add(provider, news_key, count, dry_run):
 
 def main():
     parser = argparse.ArgumentParser(description="Agent CdM 2026 — Groq (gratuit) ou Anthropic")
-    parser.add_argument("--refresh",  action="store_true", help="Remplace tout par les actus J-1")
-    parser.add_argument("--add",      action="store_true", help="Ajoute des articles")
-    parser.add_argument("--list",     action="store_true", help="Liste les articles existants")
-    parser.add_argument("--count",    type=int, default=12)
-    parser.add_argument("--dry-run",  action="store_true")
+    parser.add_argument("--refresh",         action="store_true", help="Remplace tout par les actus J-1")
+    parser.add_argument("--add",             action="store_true", help="Ajoute des articles")
+    parser.add_argument("--list",            action="store_true", help="Liste les articles existants")
+    parser.add_argument("--update-schedule", action="store_true", help="Met à jour schedule.json avec scores ESPN")
+    parser.add_argument("--count",           type=int, default=12)
+    parser.add_argument("--dry-run",         action="store_true")
     args = parser.parse_args()
 
     if args.list:
         cmd_list(load_articles().get("articles", []))
         return
 
+    if args.update_schedule:
+        update_schedule(YESTERDAY)
+        return
+
     if not args.refresh and not args.add:
         args.refresh = True
 
-    provider     = get_provider()
-    news_key     = os.getenv("NEWS_API_KEY")
+    provider = get_provider()
+    news_key = os.getenv("NEWS_API_KEY")
 
     if args.refresh:
+        # Mise à jour automatique des scores avant de générer les articles
+        update_schedule(YESTERDAY)
         run_refresh(provider, news_key, args.count, args.dry_run)
     else:
         run_add(provider, news_key, args.count, args.dry_run)
