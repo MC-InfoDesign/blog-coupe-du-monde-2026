@@ -36,8 +36,8 @@ vercel.json         — Headers cache uniquement (pas de builds)
 .env                — GROQ_API_KEY=gsk_... (ne jamais committer)
 ```
 
-**Fichiers jamais modifiés par GitHub Actions :** index.html, schedule.json, vercel.json, agent.py
-**Fichiers modifiés par GitHub Actions chaque jour :** articles.json, sitemap.xml
+**Fichiers jamais modifiés par GitHub Actions :** index.html, vercel.json, agent.py
+**Fichiers modifiés par GitHub Actions chaque jour :** articles.json, schedule.json, sitemap.xml
 
 ---
 
@@ -136,18 +136,37 @@ renderApp()               // recompose toute la page selon le hash
 
 ### Commandes
 ```bash
-python agent.py --refresh          # remplace tout articles.json (12 articles J-1)
+python agent.py --refresh               # pipeline complet : ESPN scores → articles → save
 python agent.py --refresh --count 8
-python agent.py --add --count 3    # ajoute sans remplacer
+python agent.py --add --count 3         # ajoute sans remplacer
 python agent.py --list
 python agent.py --dry-run --refresh
+python agent.py --update-schedule       # met à jour schedule.json depuis ESPN uniquement
 ```
 
-### Logique --refresh
-1. Fetch NewsAPI `from=J-1` (ou sujets de secours si pas de NEWS_API_KEY)
-2. `categorize()` → `generate_article()` via LLM
-3. Auteur = nom humain aléatoire (random.choice(AUTHORS))
-4. Remplace entièrement articles.json
+### Pipeline --refresh (ordre automatique)
+1. `update_schedule(YESTERDAY)` — fetch scores ESPN API JSON (gratuit, sans clé), met à jour schedule.json
+2. `get_match_topics(YESTERDAY)` — 1 topic par match terminé hier avec score réel
+3. `generate_pertinent_topics(provider, N)` — LLM génère N sujets pertinents selon l'état du tournoi (équipes qualifiées, prochains matchs, derniers résultats)
+4. Articles matchs en priorité, puis sujets pertinents, puis FALLBACK_TOPICS en dernier recours
+
+### ESPN API (scores automatiques)
+- URL : `https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=YYYYMMDD`
+- Gratuite, sans clé, retourne les matchs terminés du jour
+- Mapping noms ESPN→français dans `TEAM_NAME_MAP` (agent.py)
+- Gère l'inversion home/away ESPN
+
+### Badge LIVE (index.html)
+- Caché par défaut (`display:none`)
+- `checkLiveBadge()` appelé au boot : lit schedule.json, vérifie si heure ET actuelle est entre kickoff et kickoff+110min d'un match du jour
+- S'affiche automatiquement si match en cours
+
+### Logique --refresh (voir Pipeline ci-dessus)
+1. Fetch scores ESPN → schedule.json mis à jour
+2. Topics matchs (score réel) + sujets pertinents LLM
+3. `categorize()` → `generate_article()` via LLM
+4. Auteur = nom humain aléatoire (random.choice(AUTHORS))
+5. Remplace entièrement articles.json
 
 ---
 
@@ -155,11 +174,12 @@ python agent.py --dry-run --refresh
 
 ### Vercel (production)
 ```powershell
-cd C:\Users\Mimix\blog-coupe-du-monde
+cd "C:\Users\Mimix\APK Projects Claude\blog-coupe-du-monde"
 vercel --prod   # déploie les fichiers locaux directement, ~6 secondes
 ```
-**Attention :** Vercel est configuré sur branche `master` (pas `main`).
-Si `git push` ne déclenche pas Vercel, toujours utiliser `vercel --prod`.
+**Attention :** Vercel ne se redéploie PAS automatiquement sur push GitHub Actions.
+- Si `VERCEL_TOKEN` est configuré dans GitHub Secrets → le workflow déploie automatiquement
+- Sinon → toujours faire `vercel --prod` manuellement après chaque push important
 
 ### Git workflow
 ```powershell
@@ -178,10 +198,13 @@ git add -A && git commit -m "message" && git push --force
 
 ### GitHub Actions (daily-refresh.yml)
 - Tourne chaque jour à **9h heure de Paris** (7h UTC)
-- Secrets requis dans GitHub Settings → Secrets : `GROQ_API_KEY`
-- Optionnel : `NEWS_API_KEY`, `ANTHROPIC_API_KEY`
+- Secrets requis dans GitHub Settings → Secrets :
+  - `GROQ_API_KEY` — génération articles (obligatoire)
+  - `VERCEL_TOKEN` — déploiement auto Vercel (obligatoire pour tout automatiser)
+  - `NEWS_API_KEY`, `ANTHROPIC_API_KEY` — optionnels
 - Permissions : `contents: write` + `token: GITHUB_TOKEN` dans checkout
-- Modifie uniquement : `articles.json`, `sitemap.xml`
+- Modifie et commite : `articles.json`, `schedule.json`, `sitemap.xml`
+- Déploie sur Vercel via `npx vercel --prod --token=$VERCEL_TOKEN --yes`
 
 ---
 
