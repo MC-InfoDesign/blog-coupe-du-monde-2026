@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-06-27",
+  "lastUpdated": "2026-06-28",
   "source": "FIFA / NBC Sports / ESPN",
   "phases": [
     "Groupes",
@@ -1735,9 +1735,9 @@
       "tz": "ET",
       "home": "🇿🇦 Afrique du Sud",
       "away": "🇨🇦 Canada",
-      "homeScore": null,
-      "awayScore": null,
-      "status": "à venir",
+      "homeScore": 0,
+      "awayScore": 1,
+      "status": "terminé",
       "venue": "SoFi Stadium, Los Angeles",
       "note": ""
     },
