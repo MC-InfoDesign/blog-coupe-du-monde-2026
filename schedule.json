@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-06-28",
+  "lastUpdated": "2026-06-29",
   "source": "FIFA / NBC Sports / ESPN",
   "phases": [
     "Groupes",
@@ -1750,9 +1750,9 @@
       "tz": "ET",
       "home": "🇧🇷 Brésil",
       "away": "🇯🇵 Japon",
-      "homeScore": null,
-      "awayScore": null,
-      "status": "à venir",
+      "homeScore": 2,
+      "awayScore": 1,
+      "status": "terminé",
       "venue": "NRG Stadium, Houston",
       "note": "Choc des 1/8 !"
     },
