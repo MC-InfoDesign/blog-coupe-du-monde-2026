@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-06-29",
+  "lastUpdated": "2026-06-30",
   "source": "FIFA / NBC Sports / ESPN",
   "phases": [
     "Groupes",
@@ -1795,9 +1795,9 @@
       "tz": "ET",
       "home": "🇨🇮 Côte d'Ivoire",
       "away": "🇳🇴 Norvège",
-      "homeScore": null,
-      "awayScore": null,
-      "status": "à venir",
+      "homeScore": 1,
+      "awayScore": 2,
+      "status": "terminé",
       "venue": "AT&T Stadium, Dallas",
       "note": ""
     },
@@ -1810,9 +1810,9 @@
       "tz": "ET",
       "home": "🇫🇷 France",
       "away": "🇸🇪 Suède",
-      "homeScore": null,
-      "awayScore": null,
-      "status": "à venir",
+      "homeScore": 3,
+      "awayScore": 0,
+      "status": "terminé",
       "venue": "MetLife Stadium, New Jersey",
       "note": "Les Bleus favoris"
     },
@@ -1870,9 +1870,9 @@
       "tz": "ET",
       "home": "🇲🇽 Mexique",
       "away": "🇪🇨 Équateur",
-      "homeScore": null,
-      "awayScore": null,
-      "status": "à venir",
+      "homeScore": 2,
+      "awayScore": 0,
+      "status": "terminé",
       "venue": "Estadio Azteca, Mexico City",
       "note": "Derby américain — Azteca en feu !"
     },
