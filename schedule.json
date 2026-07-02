@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-06-30",
+  "lastUpdated": "2026-07-01",
   "source": "FIFA / NBC Sports / ESPN",
   "phases": [
     "Groupes",
@@ -1885,9 +1885,9 @@
       "tz": "ET",
       "home": "🏴󠁧󠁢󠁥󠁮󠁧󠁿 Angleterre",
       "away": "🇨🇩 RD Congo",
-      "homeScore": null,
-      "awayScore": null,
-      "status": "à venir",
+      "homeScore": 2,
+      "awayScore": 1,
+      "status": "terminé",
       "venue": "Mercedes-Benz Stadium, Atlanta",
       "note": ""
     },
