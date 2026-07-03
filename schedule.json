@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-07-01",
+  "lastUpdated": "2026-07-02",
   "source": "FIFA / NBC Sports / ESPN",
   "phases": [
     "Groupes",
@@ -1915,9 +1915,9 @@
       "tz": "ET",
       "home": "🇪🇸 Espagne",
       "away": "🇦🇹 Autriche",
-      "homeScore": null,
-      "awayScore": null,
-      "status": "à venir",
+      "homeScore": 3,
+      "awayScore": 0,
+      "status": "terminé",
       "venue": "SoFi Stadium, Los Angeles",
       "note": ""
     },
@@ -1930,9 +1930,9 @@
       "tz": "ET",
       "home": "🇵🇹 Portugal",
       "away": "🇭🇷 Croatie",
-      "homeScore": null,
-      "awayScore": null,
-      "status": "à venir",
+      "homeScore": 2,
+      "awayScore": 1,
+      "status": "terminé",
       "venue": "BMO Field, Toronto",
       "note": "🔥 Choc des anciens champions !"
     },
@@ -1945,9 +1945,9 @@
       "tz": "ET",
       "home": "🇨🇭 Suisse",
       "away": "🇩🇿 Algérie",
-      "homeScore": null,
-      "awayScore": null,
-      "status": "à venir",
+      "homeScore": 2,
+      "awayScore": 0,
+      "status": "terminé",
       "venue": "BC Place, Vancouver",
       "note": ""
     },
