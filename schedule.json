@@ -1,5 +1,5 @@
 {
-  "lastUpdated": "2026-07-02",
+  "lastUpdated": "2026-07-03",
   "source": "FIFA / NBC Sports / ESPN",
   "phases": [
     "Groupes",
@@ -1960,9 +1960,9 @@
       "tz": "ET",
       "home": "🇨🇴 Colombie",
       "away": "🇬🇭 Ghana",
-      "homeScore": null,
-      "awayScore": null,
-      "status": "à venir",
+      "homeScore": 1,
+      "awayScore": 0,
+      "status": "terminé",
       "venue": "Arrowhead Stadium, Kansas City",
       "note": ""
     },
